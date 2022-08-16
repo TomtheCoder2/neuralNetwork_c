@@ -5,10 +5,11 @@
 #include <time.h>
 
 
-#define printf //printf
+#define printf printf
 const double l_rate = 0.000056;
+const double lamda = 100;
 
-typedef struct {
+typedef struct Matrix {
     int rows;
     int cols;
     double *data;
@@ -72,6 +73,17 @@ Matrix *matrixMultScalar(Matrix *a, double scalar) {
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = a->data[i * a->cols + j] * scalar;
+        }
+    }
+    return c;
+}
+
+// add a scalar to each matrix element
+Matrix *matrixAddScalar(Matrix *a, double scalar) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
+    for (int i = 0; i < a->rows; i++) {
+        for (int j = 0; j < a->cols; j++) {
+            c->data[i * c->cols + j] = a->data[i * a->cols + j] + scalar;
         }
     }
     return c;
@@ -184,34 +196,34 @@ correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
              Matrix *weights[layerCount],
              Matrix *biases[layerCount]) {
     // compute the gradient for gradient descend
-    Matrix *h_gradient = matrixSigmoidDerivative(layers[i]);
+    Matrix *gradient = matrixSigmoidDerivative(layers[i]);
     // add the current error of this layer to the gradient
     for (int j = 0; j < layers[i]->rows; j++) {
         for (int k = 0; k < layers[i]->cols; k++) {
-            h_gradient->data[j * h_gradient->cols + k] *= error->data[j * error->cols + k];
+            gradient->data[j * gradient->cols + k] *= error->data[j * error->cols + k];
         }
     }
+//    Matrix *g_temp = matrixMult(gradient, error);
+//    matrix_release(gradient);
+//    gradient = g_temp;
     // add the learning rate for controlled learning
-    Matrix *temp = matrixMultScalar(h_gradient, l_rate);
-    matrix_release(h_gradient);
-    h_gradient = temp;
-    Matrix *layersTransposed = matrixTranspose(layers[i - 1]);
+    Matrix *temp = matrixMultScalar(gradient, l_rate);
+    matrix_release(gradient);
+    gradient = temp;
+    Matrix *layerTransposed = matrixTranspose(layers[i - 1]);
     // compute the delta weight
-    Matrix *wih_delta = matrixMult(h_gradient, layersTransposed);
+    Matrix *delta = matrixMult(gradient, layerTransposed);
     // apply correction
-    Matrix *temp2 = add(weights[i - 1], wih_delta);
+    Matrix *temp2 = add(weights[i - 1], delta);
     matrix_release(weights[i - 1]);
     weights[i - 1] = temp2;
-    Matrix *temp3 = add(biases[i - 1], h_gradient);
+    Matrix *temp3 = add(biases[i - 1], gradient);
     matrix_release(biases[i - 1]);
     biases[i - 1] = temp3;
     // free memory
-    matrix_release(h_gradient);
-    matrix_release(layersTransposed);
-    matrix_release(wih_delta);
-//    matrix_release(temp);
-//    matrix_release(temp2);
-//    matrix_release(temp3);
+    matrix_release(gradient);
+    matrix_release(layerTransposed);
+    matrix_release(delta);
 }
 
 // predict the output of a neural network for a specific input
@@ -222,7 +234,9 @@ Matrix *predict(size_t x_n, double X[], int layerCount, Matrix *weights[layerCou
     layers[0] = init_matrix(x_n, 1);
     for (int i = 0; i < x_n; i++) {
         layers[0]->data[i] = X[i];
+        printf("%g ", layers[0]->data[i]);
     }
+    printf("\n");
     // compute the output of each layer
     Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
@@ -254,9 +268,9 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     for (int i = 0; i < x_n; i++) {
         layers[0]->data[i] =
                 X[i];
-        printf("%g ", layers[0]->data[i]);
+//        printf("%g ", layers[0]->data[i]);
     }
-    printf("\n");
+//    printf("\n");
     // compute the output of each layer
     Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
@@ -274,9 +288,9 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     Matrix *target = init_matrix(y_n, 1);
     for (int i = 0; i < y_n; i++) {
         target->data[i] = Y[i];
-        printf("%g ", target->data[i]);
+//        printf("%g ", target->data[i]);
     }
-    printf("\n");
+//    printf("\n");
     Matrix *error = sub(target, layers[layerCount - 1]);
     Matrix *transposed;
     // correct the error of each layer
@@ -398,7 +412,8 @@ int main() {
     double X[] = {17, 35, 27, 81};
     double Y[] = {1, 0, 0, 0, 0, 0, 0};
     // amount of nodes of each layer
-    int layerSizes[] = {4, 74, 89, 7};
+//    int layerSizes[] = {4, 74, 89, 7};
+    int layerSizes[] = {4, 10, 20, 7};
     // weight and biases for the network
     Matrix *weights[layerCount - 1];
     Matrix *biases[layerCount - 1];
@@ -425,7 +440,7 @@ int main() {
     // train
     struct timeval stop, start;
     gettimeofday(&start, NULL);
-    fit(test_count * 7, train_set, target_set, 10, layerCount, weights, biases);
+    fit(test_count * 7, train_set, target_set, 1000, layerCount, weights, biases);
     gettimeofday(&stop, NULL);
     printf("training took %ld us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
     // print in ms
@@ -480,12 +495,12 @@ int main() {
         matrix_release(result);
     }
     // print neural network
-//    for (int i = 0; i < layerCount - 1; i++) {
-//        printf("layer %d\n", i);
-//        print_matrix_desc(weights[i], "weights");
-//        print_matrix_desc(biases[i], "biases");
-//        printf("\n");
-//    }
+    for (int i = 0; i < layerCount - 1; i++) {
+        printf("layer %d\n", i);
+        print_matrix_desc(weights[i], "weights");
+        print_matrix_desc(biases[i], "biases");
+        printf("\n");
+    }
     // release memory
     for (int i = 0; i < layerCount - 1; i++) {
         matrix_release(weights[i]);
