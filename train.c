@@ -64,14 +64,6 @@ struct Matrix *matrixSubtract(struct Matrix *a, struct Matrix *b) {
 }
 
 
-void matrixAddScalar(struct Matrix *a, double scalar, struct Matrix *c) {
-    for (int i = 0; i < a->rows; i++) {
-        for (int j = 0; j < a->cols; j++) {
-            c->data[i * c->cols + j] = a->data[i * a->cols + j] + scalar;
-        }
-    }
-}
-
 
 struct Matrix *matrixMultScalar(struct Matrix *a, double scalar) {
     struct Matrix *c = allocMatrix(a->rows, a->cols);
