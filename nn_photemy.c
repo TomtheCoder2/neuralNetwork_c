@@ -37,7 +37,7 @@ Matrix *matrixMult(Matrix *a, Matrix *b) {
 }
 
 // add two matrices together
-Matrix *matrixAdd(Matrix *a, Matrix *b) {
+Matrix *add(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     if (a->rows != b->rows || a->cols != b->cols) {
         printf("Matrix sizes do not match\n");
@@ -53,7 +53,7 @@ Matrix *matrixAdd(Matrix *a, Matrix *b) {
 
 
 // subtract two matrices a - b
-Matrix *matrixSubtract(Matrix *a, Matrix *b) {
+Matrix *sub(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -61,16 +61,6 @@ Matrix *matrixSubtract(Matrix *a, Matrix *b) {
         }
     }
     return c;
-}
-
-
-// add a scalar to a each matrix element
-void matrixAddScalar(Matrix *a, double scalar, Matrix *c) {
-    for (int i = 0; i < a->rows; i++) {
-        for (int j = 0; j < a->cols; j++) {
-            c->data[i * c->cols + j] = a->data[i * a->cols + j] + scalar;
-        }
-    }
 }
 
 // multiply a scalar to a each matrix element
@@ -202,8 +192,8 @@ correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
     // compute the delta weight
     Matrix *wih_delta = matrixMult(h_gradient, layersTransposed);
     // apply correction
-    weights[i - 1] = matrixAdd(weights[i - 1], wih_delta);
-    biases[i - 1] = matrixAdd(biases[i - 1], h_gradient);
+    weights[i - 1] = add(weights[i - 1], wih_delta);
+    biases[i - 1] = add(biases[i - 1], h_gradient);
 }
 
 // predict the output of a neural network for a specific input
@@ -218,7 +208,7 @@ Matrix *predict(size_t x_n, double X[], int layerCount, Matrix *weights[layerCou
     // compute the output of each layer
     for (int i = 1; i < layerCount; i++) {
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
-        layers[i] = matrixAdd(layers[i], biases[i - 1]);
+        layers[i] = add(layers[i], biases[i - 1]);
         layers[i] = matrixSigmoid(layers[i]);
     }
     // return output (last layer)
@@ -238,7 +228,7 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     // compute the output of each layer
     for (int i = 1; i < layerCount; i++) {
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
-        layers[i] = matrixAdd(layers[i], biases[i - 1]);
+        layers[i] = add(layers[i], biases[i - 1]);
         layers[i] = matrixSigmoid(layers[i]);
     }
     // compute the error of the output layer and how to correct for it---------------------------------------------------------------
@@ -247,7 +237,7 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     for (int i = 0; i < y_n; i++) {
         target->data[i] = Y[i];
     }
-    Matrix *error = matrixSubtract(target, layers[layerCount - 1]);
+    Matrix *error = sub(target, layers[layerCount - 1]);
     Matrix *transposed;
     // correct the error of each layer
     correctError(layerCount - 1, layers, error, layerCount, weights, biases);
