@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <sys/time.h>
+
 
 #define printf printf
 const double l_rate = 1;
@@ -313,9 +315,13 @@ void fit(size_t train_count, Matrix *train_set[train_count], Matrix *target_set[
     Matrix *output;
     for (int i = 0; i < epochs; i++) {
         shuffle(train_count, train_set);
-        printf("epoch %d\n", i);
+        if (i % 100 == 0) {
+            printf("epoch %d\n", i);
+        }
+//        printf("epoch %d\n", i);
         for (int j = 0; j < train_count; j++) {
             output = train(train_set[j]->rows, train_set[j]->data, target_set[j]->rows, target_set[j]->data, layerCount, weights, biases);
+//            matrix_release(output);
         }
     }
 }
@@ -367,33 +373,55 @@ int main() {
     }
     printf("weights and biases init done\n");
     // train
-    fit(test_count * 7, train_set, target_set, 1000, layerCount, weights, biases);
+    struct timeval stop, start;
+    gettimeofday(&start, NULL);
+    fit(test_count * 7, train_set, target_set, 50, layerCount, weights, biases);
+    gettimeofday(&stop, NULL);
+    printf("training took %ld us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
+    // print in ms
+    printf("training took %ld ms\n", (stop.tv_sec - start.tv_sec) * 1000 + stop.tv_usec - start.tv_usec / 1000);
+    // print in s
+    printf("training took %ld s\n", (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / 1000000);
 // one train for debugging
 //    matrix_release(train(train_set[0]->rows, train_set[0]->data, target_set[0]->rows, target_set[0]->data, layerCount, weights, biases));
     // testing the network with the test set, ik i should split it in train and test set, but this is just a test anyway
-//    for (int i = 0; i < 7 * test_count; i += test_count) {
-//        Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
-//        for (int k = 0; k < result->rows; k++) {
-//            printf("%g ", result->data[k]);
-//        }
-//        printf("\n");
-//        // get the index of the highest value in the result matrix
-//        int index = 0;
-//        for (int j = 0; j < 7; j++) {
-//            if (result->data[j] > result->data[index]) {
-//                index = j;
-//            }
-//        }
+    for (int i = 0; i < 7 * test_count; i += test_count) {
+        Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
+        for (int k = 0; k < result->rows; k++) {
+            printf("%g ", result->data[k]);
+        }
+        printf("\n");
+        // get the index of the highest value in the result matrix
+        int index = 0;
+        for (int j = 0; j < 7; j++) {
+            if (result->data[j] > result->data[index]) {
+                index = j;
+            }
+        }
 //        printf("%d\n", index);
-//        double res[7];
-//        res[index] = 1.0;
-//        // check if it's correct
-//        if (res == target_set[i]->data) {
-//            printf("correct\n");
-//        } else {
-//            printf("wrong\n");
-//        }
-//    }
+        double res[7];
+        res[index] = 1.0;
+        // check if it's correct
+        int correct = 0;
+        for (int j = 0; j < 7; j++) {
+            if (res[j] == target_set[i]->data[j]) {
+                correct++;
+            }
+        }
+        if (correct == 7) {
+            printf("correct\n");
+        } else {
+            printf("wrong expected ");
+            for (int j = 0; j < 7; j++) {
+                printf("%g ", target_set[i]->data[j]);
+            }
+            printf("got ");
+            for (int j = 0; j < 7; j++) {
+                printf("%g ", target_set[i]->data[j]);
+            }
+            printf("\n");
+        }
+    }
     // print neural network
 //    for (int i = 0; i < layerCount - 1; i++) {
 //        printf("layer %d\n", i);
