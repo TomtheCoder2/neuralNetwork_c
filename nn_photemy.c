@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #define printf printf
+typedef struct Matrix Matrix;
 const double l_rate = 1;
 
 struct Matrix {
@@ -11,9 +12,11 @@ struct Matrix {
     double *data;
 };
 
+
+
 // allocate a matrix with given dimensions
-struct Matrix *allocMatrix(int rows, int cols) {
-    struct Matrix *m = (struct Matrix *) malloc(sizeof(struct Matrix));
+Matrix *allocMatrix(int rows, int cols) {
+    Matrix *m = (Matrix *) malloc(sizeof(Matrix));
     m->rows = rows;
     m->cols = cols;
     m->data = (double *) malloc(rows * cols * sizeof(double));
@@ -21,8 +24,8 @@ struct Matrix *allocMatrix(int rows, int cols) {
 }
 
 // multiply two matrices together
-struct Matrix *matrixMult(struct Matrix *a, struct Matrix *b) {
-    struct Matrix *c = allocMatrix(a->rows, b->cols);
+Matrix *matrixMult(Matrix *a, Matrix *b) {
+    Matrix *c = allocMatrix(a->rows, b->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < b->cols; j++) {
             double sum = 0;
@@ -36,8 +39,8 @@ struct Matrix *matrixMult(struct Matrix *a, struct Matrix *b) {
 }
 
 // add two matrices together
-struct Matrix *matrixAdd(struct Matrix *a, struct Matrix *b) {
-    struct Matrix *c = allocMatrix(a->rows, a->cols);
+Matrix *matrixAdd(Matrix *a, Matrix *b) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
     if (a->rows != b->rows || a->cols != b->cols) {
         printf("Matrix sizes do not match\n");
         return NULL;
@@ -52,8 +55,8 @@ struct Matrix *matrixAdd(struct Matrix *a, struct Matrix *b) {
 
 
 // subtract two matrices a - b
-struct Matrix *matrixSubtract(struct Matrix *a, struct Matrix *b) {
-    struct Matrix *c = allocMatrix(a->rows, a->cols);
+Matrix *matrixSubtract(Matrix *a, Matrix *b) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = a->data[i * a->cols + j] - b->data[i * b->cols + j];
@@ -64,7 +67,7 @@ struct Matrix *matrixSubtract(struct Matrix *a, struct Matrix *b) {
 
 
 // add a scalar to a each matrix element
-void matrixAddScalar(struct Matrix *a, double scalar, struct Matrix *c) {
+void matrixAddScalar(Matrix *a, double scalar, Matrix *c) {
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = a->data[i * a->cols + j] + scalar;
@@ -73,8 +76,8 @@ void matrixAddScalar(struct Matrix *a, double scalar, struct Matrix *c) {
 }
 
 // multiply a scalar to a each matrix element
-struct Matrix *matrixMultScalar(struct Matrix *a, double scalar) {
-    struct Matrix *c = allocMatrix(a->rows, a->cols);
+Matrix *matrixMultScalar(Matrix *a, double scalar) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = a->data[i * a->cols + j] * scalar;
@@ -85,8 +88,8 @@ struct Matrix *matrixMultScalar(struct Matrix *a, double scalar) {
 
 
 // compute the sigmoid function on each element of a matrix
-struct Matrix *matrixSigmoid(struct Matrix *a) {
-    struct Matrix *c = allocMatrix(a->rows, a->cols);
+Matrix *matrixSigmoid(Matrix *a) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = 1 / (1 + exp(-a->data[i * a->cols + j]));
@@ -96,8 +99,8 @@ struct Matrix *matrixSigmoid(struct Matrix *a) {
 }
 
 // compute the derivative of the sigmoid function on each element of a matrix
-struct Matrix *matrixSigmoidDerivative(struct Matrix *a) {
-    struct Matrix *c = allocMatrix(a->rows, a->cols);
+Matrix *matrixSigmoidDerivative(Matrix *a) {
+    Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[i * c->cols + j] = a->data[i * a->cols + j] * (1 - a->data[i * a->cols + j]);
@@ -107,8 +110,8 @@ struct Matrix *matrixSigmoidDerivative(struct Matrix *a) {
 }
 
 // transpose a matrix
-struct Matrix *matrixTranspose(struct Matrix *a) {
-    struct Matrix *c = allocMatrix(a->cols, a->rows);
+Matrix *matrixTranspose(Matrix *a) {
+    Matrix *c = allocMatrix(a->cols, a->rows);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
             c->data[j * c->cols + i] = a->data[i * a->cols + j];
@@ -118,12 +121,12 @@ struct Matrix *matrixTranspose(struct Matrix *a) {
 }
 
 // convert an array of doubles into a matrix with given dimensions, row-major
-struct Matrix *init_matrix_array(int n, int m, const double *A) {
+Matrix *init_matrix_array(int n, int m, const double *A) {
     double *B = (double *) malloc(n * m * sizeof(double));
     for (int i = 0; i < n * m; i++) {
         B[i] = A[i];
     }
-    struct Matrix *mat = malloc(sizeof(struct Matrix));
+    Matrix *mat = malloc(sizeof(Matrix));
     mat->cols = m;
     mat->rows = n;
     mat->data = B;
@@ -131,16 +134,16 @@ struct Matrix *init_matrix_array(int n, int m, const double *A) {
 }
 
 // print a matrix
-void print_matrix(struct Matrix *mat);
+void print_matrix(Matrix *mat);
 
 // init a matrix with random values
-struct Matrix *init_matrix(int n, int m) {
+Matrix *init_matrix(int n, int m) {
     double *A = (double *) malloc(n * m * sizeof(double));
 //    double A[n * m];
     for (int i = 0; i < n * m; i++) {
         A[i] = rand() / (double) RAND_MAX;
     }
-    struct Matrix *mat = malloc(sizeof(struct Matrix));
+    Matrix *mat = malloc(sizeof(Matrix));
     mat->cols = m;
     mat->rows = n;
     mat->data = A;
@@ -148,7 +151,7 @@ struct Matrix *init_matrix(int n, int m) {
 }
 
 // free a matrix
-void matrix_release(struct Matrix *mat) {
+void matrix_release(Matrix *mat) {
     if (mat == NULL) {
         return;
     }
@@ -157,7 +160,7 @@ void matrix_release(struct Matrix *mat) {
 }
 
 // print matrix
-void print_matrix(struct Matrix *mat) {
+void print_matrix(Matrix *mat) {
     printf("Matrix: (%d x %d)\n", mat->rows, mat->cols);
     if (mat == NULL || mat->data == NULL) {
         printf("NULL\n");
@@ -177,18 +180,18 @@ void print_matrix(struct Matrix *mat) {
 }
 
 // print a matrix with a description before it
-void print_matrix_desc(struct Matrix *mat, char desc[]) {
+void print_matrix_desc(Matrix *mat, char desc[]) {
     printf("%s", desc);
     print_matrix(mat);
 }
 
 // correct the error of one layer of a neural network
 void
-correctError(const int i, struct Matrix *layers[], struct Matrix *error, int layerCount,
-             struct Matrix *weights[layerCount],
-             struct Matrix *biases[layerCount]) {
+correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
+             Matrix *weights[layerCount],
+             Matrix *biases[layerCount]) {
     // compute the gradient for gradient descend
-    struct Matrix *h_gradient = matrixSigmoidDerivative(layers[i]);
+    Matrix *h_gradient = matrixSigmoidDerivative(layers[i]);
     // add the current error of this layer to the gradient
     for (int j = 0; j < layers[i]->rows; j++) {
         for (int k = 0; k < layers[i]->cols; k++) {
@@ -197,18 +200,18 @@ correctError(const int i, struct Matrix *layers[], struct Matrix *error, int lay
     }
     // add the learning rate for controlled learning
     h_gradient = matrixMultScalar(h_gradient, l_rate);
-    struct Matrix *layersTransposed = matrixTranspose(layers[i - 1]);
+    Matrix *layersTransposed = matrixTranspose(layers[i - 1]);
     // compute the delta weight
-    struct Matrix *wih_delta = matrixMult(h_gradient, layersTransposed);
+    Matrix *wih_delta = matrixMult(h_gradient, layersTransposed);
     // apply correction
     weights[i - 1] = matrixAdd(weights[i - 1], wih_delta);
     biases[i - 1] = matrixAdd(biases[i - 1], h_gradient);
 }
 
 // predict the output of a neural network for a specific input
-struct Matrix *predict(size_t x_n, double X[], int layerCount, struct Matrix *weights[layerCount], struct Matrix *biases[layerCount]) {
+Matrix *predict(size_t x_n, double X[], int layerCount, Matrix *weights[layerCount], Matrix *biases[layerCount]) {
     // array of matrices resembling the layers of the network and their output
-    struct Matrix *layers[layerCount + 1];
+    Matrix *layers[layerCount + 1];
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
     for (int i = 0; i < x_n; i++) {
@@ -225,10 +228,10 @@ struct Matrix *predict(size_t x_n, double X[], int layerCount, struct Matrix *we
 }
 
 // one training iteration
-struct Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int layerCount, struct Matrix *weights[layerCount], struct Matrix *biases[layerCount]) {
+Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int layerCount, Matrix *weights[layerCount], Matrix *biases[layerCount]) {
     // predict the output of the network for the input -----------------------------------------------------------------
     // array of matrices resembling the layers of the network and their output
-    struct Matrix *layers[layerCount + 1];
+    Matrix *layers[layerCount + 1];
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
     for (int i = 0; i < x_n; i++) {
@@ -242,18 +245,18 @@ struct Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[],
     }
     // compute the error of the output layer and how to correct for it---------------------------------------------------------------
     // compare output the expected output (target) => error
-    struct Matrix *target = init_matrix(y_n, 1);
+    Matrix *target = init_matrix(y_n, 1);
     for (int i = 0; i < y_n; i++) {
         target->data[i] = Y[i];
     }
-    struct Matrix *error = matrixSubtract(target, layers[layerCount - 1]);
-    struct Matrix *transposed;
+    Matrix *error = matrixSubtract(target, layers[layerCount - 1]);
+    Matrix *transposed;
     // correct the error of each layer
     correctError(layerCount - 1, layers, error, layerCount, weights, biases);
     for (int i = layerCount - 2; i > 0; i--) {
         // compute the error of each layer
         transposed = matrixTranspose(weights[i]);
-        struct Matrix *temp = matrixMult(transposed, error);
+        Matrix *temp = matrixMult(transposed, error);
         error = temp;
         // apply correction
         correctError(i, layers, error, layerCount, weights, biases);
@@ -274,12 +277,12 @@ struct Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[],
    Only effective if N is much smaller than RAND_MAX;
    if this may not be the case, use a better random
    number generator. */
-void shuffle(size_t n, struct Matrix *array[n]) {
+void shuffle(size_t n, Matrix *array[n]) {
     if (n > 1) {
         size_t i;
         for (i = 0; i < n - 1; i++) {
             size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
-            struct Matrix *t = array[j];
+            Matrix *t = array[j];
             array[j] = array[i];
             array[i] = t;
         }
@@ -289,9 +292,9 @@ void shuffle(size_t n, struct Matrix *array[n]) {
 #undef printf
 
 // just call the train function for each learn_set each epoch
-void fit(size_t train_count, struct Matrix *train_set[train_count], struct Matrix *target_set[train_count], int epochs, int layerCount, struct Matrix *weights[layerCount], struct Matrix *biases[layerCount]) {
+void fit(size_t train_count, Matrix *train_set[train_count], Matrix *target_set[train_count], int epochs, int layerCount, Matrix *weights[layerCount], Matrix *biases[layerCount]) {
     printf("fit\n");
-    struct Matrix *output;
+    Matrix *output;
     for (int i = 0; i < epochs; i++) {
         shuffle(train_count, train_set);
         printf("epoch %d\n", i);
@@ -307,8 +310,8 @@ enum {
 
 // resembles a train_set but only contains one input and one output
 struct TrainSet {
-    struct Matrix *input[test_count * 7];
-    struct Matrix *target[test_count * 7];
+    Matrix *input[test_count * 7];
+    Matrix *target[test_count * 7];
 };
 
 double max_train_set = 0;
@@ -325,11 +328,11 @@ int main() {
     // amount of nodes of each layer
     int layerSizes[] = {4, 74, 89, 7};
     // weight and biases for the network
-    struct Matrix *weights[layerCount - 1];
-    struct Matrix *biases[layerCount - 1];
+    Matrix *weights[layerCount - 1];
+    Matrix *biases[layerCount - 1];
     // local train_set and target_set
-    struct Matrix *train_set[test_count * 7];
-    struct Matrix *target_set[test_count * 7];
+    Matrix *train_set[test_count * 7];
+    Matrix *target_set[test_count * 7];
     // init train_set and target_set
     struct TrainSet *ts = getTrainingData();
     for (int i = 0; i < test_count * 7; i++) {
@@ -351,7 +354,7 @@ int main() {
 
     // testing the network with the test set, ik i should split it in train and test set, but this is just a test anyway
     for (int i = 0; i < 7 * test_count; i += test_count) {
-        struct Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
+        Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
         for (int k = 0; k < result->rows; k++) {
             printf("%g ", result->data[k]);
         }
@@ -1086,8 +1089,8 @@ struct TrainSet *getTrainingData() {
                                 {19,  41,   33,  97},
                                 {25,  45,   34,  105},
                                 {19,  40,   32,  95},};
-    struct Matrix *train_set[test_count * 7];
-    struct Matrix *target_set[test_count * 7];
+    Matrix *train_set[test_count * 7];
+    Matrix *target_set[test_count * 7];
     // get the max of the train_set
     max_train_set = 0;
     int max_train_set_4 = 0;

@@ -175,7 +175,7 @@ void print_matrix_desc(struct Matrix *mat, char desc[]) {
     print_matrix(mat);
 }
 
-void plotData(size_t n, double x[n], double y[n]) {
+__attribute__((unused)) void plotData(size_t n, double x[n], double y[n]) {
     FILE *gnuplot = popen("gnuplot", "w");
     if (!gnuplot) {
         perror("popen");
@@ -195,7 +195,7 @@ void plotData(size_t n, double x[n], double y[n]) {
     exit(EXIT_SUCCESS);
 }
 
-
+// for later use
 //__kernel void train(__global const double *X, __global const double *Y,
 //                    __global const double *weights, __global const double *biases,
 //                    int nn_size, const double *layer_sizes) {
@@ -435,11 +435,11 @@ int main() {
     for (int j = 0; j < 4; j++) {
         X[j] /= max_train_set;
     }
-    train(4, X, 7, Y, layerCount, weights, biases);
+//    train(4, X, 7, Y, layerCount, weights, biases);
 //    print_matrix_desc(weights[0], "weights[0]");
     gettimeofday(&stop, NULL);
     printf("took %lu us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
-    for (int i = 0; i < 7 * test_count; i += test_count) {
+    for (int i = 0; i < 7 * test_count * 0; i += test_count) {
         struct Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
 //        print_matrix_desc(result, "result");
         for (int k = 0; k < result->rows; k++) {
@@ -472,6 +472,11 @@ int main() {
         printf("\n");
     }
     printf("finished\n");
+    // free memory
+    for (int i = 0; i < test_count * 7; i++) {
+        matrix_release(train_set[i]);
+        matrix_release(target_set[i]);
+    }
     return 0;
 }
 
@@ -1225,6 +1230,11 @@ struct TrainSet *getTrainingData() {
     for (int i = 0; i < test_count * 7; i++) {
         ts->input[i] = train_set[i];
         ts->target[i] = target_set[i];
+    }
+    // free memory
+    for (int i = 0; i < test_count * 7; i++) {
+        matrix_release(train_set[i]);
+        matrix_release(target_set[i]);
     }
     return ts;
 }
