@@ -3,15 +3,13 @@
 #include <stdlib.h>
 
 #define printf printf
-typedef struct Matrix Matrix;
 const double l_rate = 1;
 
-struct Matrix {
+typedef struct Matrix {
     int rows;
     int cols;
     double *data;
-};
-
+} Matrix;
 
 
 // allocate a matrix with given dimensions
@@ -1144,6 +1142,11 @@ struct TrainSet *getTrainingData() {
     for (int i = 0; i < test_count * 7; i++) {
         ts->input[i] = train_set[i];
         ts->target[i] = target_set[i];
+    }
+    // free memory
+    for (int i = 0; i < test_count * 7; i++) {
+        matrix_release(train_set[i]);
+        matrix_release(target_set[i]);
     }
     return ts;
 }
