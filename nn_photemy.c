@@ -2,10 +2,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <time.h>
 
 
-#define printf printf
-const double l_rate = 1;
+#define printf //printf
+const double l_rate = 0.000056;
 
 typedef struct {
     int rows;
@@ -223,10 +224,21 @@ Matrix *predict(size_t x_n, double X[], int layerCount, Matrix *weights[layerCou
         layers[0]->data[i] = X[i];
     }
     // compute the output of each layer
+    Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
-        layers[i] = add(layers[i], biases[i - 1]);
-        layers[i] = matrixSigmoid(layers[i]);
+        Matrix *temp = add(layers[i], biases[i - 1]);
+        matrix_release(layers[i]);
+        layers[i] = temp;
+        temp2 = matrixSigmoid(layers[i]);
+        matrix_release(layers[i]);
+        layers[i] = temp2;
+        //        matrix_release(temp);
+    }
+//    matrix_release(temp2);
+    // free memory
+    for (int i = 0; i < layerCount - 1; i++) {
+        matrix_release(layers[i]);
     }
     // return output (last layer)
     return layers[layerCount - 1];
@@ -242,7 +254,9 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     for (int i = 0; i < x_n; i++) {
         layers[0]->data[i] =
                 X[i];
+        printf("%g ", layers[0]->data[i]);
     }
+    printf("\n");
     // compute the output of each layer
     Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
@@ -260,7 +274,9 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     Matrix *target = init_matrix(y_n, 1);
     for (int i = 0; i < y_n; i++) {
         target->data[i] = Y[i];
+        printf("%g ", target->data[i]);
     }
+    printf("\n");
     Matrix *error = sub(target, layers[layerCount - 1]);
     Matrix *transposed;
     // correct the error of each layer
@@ -307,6 +323,29 @@ void shuffle(size_t n, Matrix *array[n]) {
     }
 }
 
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// A function to generate a random permutation of arr[]
+void randomize(int arr[], int n) {
+    // Use a different seed value so that we don't get same
+    // result each time we run this program
+    srand(time(NULL));
+
+    // Start from the last element and swap one by one. We don't
+    // need to run for the first element that's why i > 0
+    for (int i = n - 1; i > 0; i--) {
+        // Pick a random index from 0 to i
+        int j = rand() % (i + 1);
+
+        // Swap arr[i] with the element at random index
+        swap(&arr[i], &arr[j]);
+    }
+}
+
 #undef printf
 
 // just call the train function for each learn_set each epoch
@@ -314,7 +353,17 @@ void fit(size_t train_count, Matrix *train_set[train_count], Matrix *target_set[
     printf("fit\n");
     Matrix *output;
     for (int i = 0; i < epochs; i++) {
-        shuffle(train_count, train_set);
+//        shuffle(train_count, train_set);
+//        randomize(train_set, train_count);
+        int arr[train_count];
+        for (int j = 0; j < train_count; j++) {
+            arr[j] = j;
+        }
+        randomize(arr, train_count);
+        for (int j = 0; j < train_count; j++) {
+            train_set[j] = train_set[arr[j]];
+            target_set[j] = target_set[arr[j]];
+        }
         if (i % 100 == 0) {
             printf("epoch %d\n", i);
         }
@@ -331,17 +380,18 @@ enum {
 };
 
 // resembles a train_set but only contains one input and one output
-struct TrainSet {
+typedef struct {
     Matrix *input[test_count * 7];
     Matrix *target[test_count * 7];
-};
+} TrainSet;
 
 double max_train_set = 0;
 
-struct TrainSet *getTrainingData();
+TrainSet *getTrainingData();
 
 
 int main() {
+    // check for mem leak: cmake .; make; valgrind --tool=memcheck --leak-check=full ./train_p
     // how many layers of the network
     int layerCount = 4;
     // testing arrays
@@ -356,7 +406,7 @@ int main() {
     Matrix *train_set[test_count * 7];
     Matrix *target_set[test_count * 7];
     // init train_set and target_set
-    struct TrainSet *ts = getTrainingData();
+    TrainSet *ts = getTrainingData();
     for (int i = 0; i < test_count * 7; i++) {
         train_set[i] = ts->input[i];
         target_set[i] = ts->target[i];
@@ -375,7 +425,7 @@ int main() {
     // train
     struct timeval stop, start;
     gettimeofday(&start, NULL);
-    fit(test_count * 7, train_set, target_set, 50, layerCount, weights, biases);
+    fit(test_count * 7, train_set, target_set, 10, layerCount, weights, biases);
     gettimeofday(&stop, NULL);
     printf("training took %ld us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
     // print in ms
@@ -403,9 +453,15 @@ int main() {
         res[index] = 1.0;
         // check if it's correct
         int correct = 0;
+        int bitarray[7];
         for (int j = 0; j < 7; j++) {
             if (res[j] == target_set[i]->data[j]) {
                 correct++;
+            }
+            if (result->data[j] > 0) {
+                bitarray[j] = 1;
+            } else {
+                bitarray[j] = 0;
             }
         }
         if (correct == 7) {
@@ -417,10 +473,11 @@ int main() {
             }
             printf("got ");
             for (int j = 0; j < 7; j++) {
-                printf("%g ", target_set[i]->data[j]);
+                printf("%d ", bitarray[j]);
             }
             printf("\n");
         }
+        matrix_release(result);
     }
     // print neural network
 //    for (int i = 0; i < layerCount - 1; i++) {
@@ -439,7 +496,7 @@ int main() {
 }
 
 // data
-struct TrainSet *getTrainingData() {
+TrainSet *getTrainingData() {
     double training_set[][4] = {{17,  35,   27,  81},
                                 {16,  34,   27,  80},
                                 {17,  34,   27,  81},
@@ -1162,16 +1219,15 @@ struct TrainSet *getTrainingData() {
     }
     printf("max_train_set: %f\n", max_train_set);
     // normalize the train_set
-    for (int i = 0; i < test_count * 7; i++) {
-        for (int j = 0; j < 3; j++) {
-            training_set[i][j] /= (max_train_set / 2);
-            training_set[i][j] -= 1;
-//            printf("%f ", training_set[i][j]);
-        }
-        training_set[i][3] /= (max_train_set_4 / 2);
-        training_set[i][3] -= 1;
-    }
-    // TODO: fix memory leak
+//    for (int i = 0; i < test_count * 7; i++) {
+//        for (int j = 0; j < 3; j++) {
+//            training_set[i][j] /= (max_train_set / 2);
+//            training_set[i][j] -= 1;
+////            printf("%f ", training_set[i][j]);
+//        }
+//        training_set[i][3] /= (max_train_set_4 / 2);
+//        training_set[i][3] -= 1;
+//    }
     for (int i = 0; i < test_count * 7; i++) {
 //        target_set[i] = init_matrix(7, 1);
         for (int j = 0; j < 4; j++) {
@@ -1191,7 +1247,7 @@ struct TrainSet *getTrainingData() {
         }
     }
     // convert it to a TrainSet
-    struct TrainSet *ts = malloc(sizeof(struct TrainSet));
+    TrainSet *ts = malloc(sizeof(TrainSet));
     for (int i = 0; i < test_count * 7; i++) {
         ts->input[i] = train_set[i];
         ts->target[i] = target_set[i];
