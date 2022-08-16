@@ -143,7 +143,9 @@ void matrix_release(Matrix *mat) {
     if (mat == NULL) {
         return;
     }
-    free(mat->data);
+    if (mat->data != NULL) {
+        free(mat->data);
+    }
     free(mat);
 }
 
@@ -187,13 +189,26 @@ correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
         }
     }
     // add the learning rate for controlled learning
-    h_gradient = matrixMultScalar(h_gradient, l_rate);
+    Matrix *temp = matrixMultScalar(h_gradient, l_rate);
+    matrix_release(h_gradient);
+    h_gradient = temp;
     Matrix *layersTransposed = matrixTranspose(layers[i - 1]);
     // compute the delta weight
     Matrix *wih_delta = matrixMult(h_gradient, layersTransposed);
     // apply correction
-    weights[i - 1] = add(weights[i - 1], wih_delta);
-    biases[i - 1] = add(biases[i - 1], h_gradient);
+    Matrix *temp2 = add(weights[i - 1], wih_delta);
+    matrix_release(weights[i - 1]);
+    weights[i - 1] = temp2;
+    Matrix *temp3 = add(biases[i - 1], h_gradient);
+    matrix_release(biases[i - 1]);
+    biases[i - 1] = temp3;
+    // free memory
+    matrix_release(h_gradient);
+    matrix_release(layersTransposed);
+    matrix_release(wih_delta);
+//    matrix_release(temp);
+//    matrix_release(temp2);
+//    matrix_release(temp3);
 }
 
 // predict the output of a neural network for a specific input
@@ -223,13 +238,20 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
     for (int i = 0; i < x_n; i++) {
-        layers[0]->data[i] = X[i];
+        layers[0]->data[i] =
+                X[i];
     }
     // compute the output of each layer
+    Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
-        layers[i] = add(layers[i], biases[i - 1]);
-        layers[i] = matrixSigmoid(layers[i]);
+        Matrix *temp = add(layers[i], biases[i - 1]);
+        matrix_release(layers[i]);
+        layers[i] = temp;
+        temp2 = matrixSigmoid(layers[i]);
+        matrix_release(layers[i]);
+        layers[i] = temp2;
+//        matrix_release(temp);
     }
     // compute the error of the output layer and how to correct for it---------------------------------------------------------------
     // compare output the expected output (target) => error
@@ -241,20 +263,26 @@ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int la
     Matrix *transposed;
     // correct the error of each layer
     correctError(layerCount - 1, layers, error, layerCount, weights, biases);
+    Matrix *temp;
     for (int i = layerCount - 2; i > 0; i--) {
         // compute the error of each layer
         transposed = matrixTranspose(weights[i]);
-        Matrix *temp = matrixMult(transposed, error);
+        temp = matrixMult(transposed, error);
+        matrix_release(transposed);
+        matrix_release(error);
         error = temp;
         // apply correction
         correctError(i, layers, error, layerCount, weights, biases);
+//        matrix_release(temp);
     }
     // free all memory
-    free(transposed);
-    free(target);
-    free(error);
+//    matrix_release(transposed);
+    matrix_release(target);
+    matrix_release(temp2);
+    matrix_release(temp);
+//    matrix_release(error);
     for (int i = 0; i < layerCount - 1; i++) {
-        free(layers[i]);
+        matrix_release(layers[i]);
     }
     // return output for later stats (WIP)
     return layers[layerCount - 1];
@@ -326,6 +354,7 @@ int main() {
     for (int i = 0; i < test_count * 7; i++) {
         train_set[i] = ts->input[i];
         target_set[i] = ts->target[i];
+//        print_matrix_desc(train_set[i], "train_set");
     }
     printf("training data init done\n");
     // init weights and biases
@@ -338,38 +367,44 @@ int main() {
     }
     printf("weights and biases init done\n");
     // train
-    fit(test_count * 7, train_set, target_set, 100, layerCount, weights, biases);
-
+    fit(test_count * 7, train_set, target_set, 1000, layerCount, weights, biases);
+// one train for debugging
+//    matrix_release(train(train_set[0]->rows, train_set[0]->data, target_set[0]->rows, target_set[0]->data, layerCount, weights, biases));
     // testing the network with the test set, ik i should split it in train and test set, but this is just a test anyway
-    for (int i = 0; i < 7 * test_count; i += test_count) {
-        Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
-        for (int k = 0; k < result->rows; k++) {
-            printf("%g ", result->data[k]);
-        }
-        printf("\n");
-        // get the index of the highest value in the result matrix
-        int index = 0;
-        for (int j = 0; j < 7; j++) {
-            if (result->data[j] > result->data[index]) {
-                index = j;
-            }
-        }
-        printf("%d\n", index);
-        double res[7];
-        res[index] = 1.0;
-        // check if it's correct
-        if (res == target_set[i]->data) {
-            printf("correct\n");
-        } else {
-            printf("wrong\n");
-        }
-    }
+//    for (int i = 0; i < 7 * test_count; i += test_count) {
+//        Matrix *result = predict(4, train_set[i]->data, layerCount, weights, biases);
+//        for (int k = 0; k < result->rows; k++) {
+//            printf("%g ", result->data[k]);
+//        }
+//        printf("\n");
+//        // get the index of the highest value in the result matrix
+//        int index = 0;
+//        for (int j = 0; j < 7; j++) {
+//            if (result->data[j] > result->data[index]) {
+//                index = j;
+//            }
+//        }
+//        printf("%d\n", index);
+//        double res[7];
+//        res[index] = 1.0;
+//        // check if it's correct
+//        if (res == target_set[i]->data) {
+//            printf("correct\n");
+//        } else {
+//            printf("wrong\n");
+//        }
+//    }
     // print neural network
+//    for (int i = 0; i < layerCount - 1; i++) {
+//        printf("layer %d\n", i);
+//        print_matrix_desc(weights[i], "weights");
+//        print_matrix_desc(biases[i], "biases");
+//        printf("\n");
+//    }
+    // release memory
     for (int i = 0; i < layerCount - 1; i++) {
-        printf("layer %d\n", i);
-        print_matrix_desc(weights[i], "weights");
-        print_matrix_desc(biases[i], "biases");
-        printf("\n");
+        matrix_release(weights[i]);
+        matrix_release(biases[i]);
     }
     printf("finished\n");
     return 0;
@@ -1103,14 +1138,14 @@ struct TrainSet *getTrainingData() {
         for (int j = 0; j < 3; j++) {
             training_set[i][j] /= (max_train_set / 2);
             training_set[i][j] -= 1;
-            printf("%f ", training_set[i][j]);
+//            printf("%f ", training_set[i][j]);
         }
         training_set[i][3] /= (max_train_set_4 / 2);
         training_set[i][3] -= 1;
     }
     // TODO: fix memory leak
     for (int i = 0; i < test_count * 7; i++) {
-        target_set[i] = init_matrix(7, 1);
+//        target_set[i] = init_matrix(7, 1);
         for (int j = 0; j < 4; j++) {
 //            training_set[i][j] = training_set[i][j] / max_train_set;
 //            printf("%f ", training_set[i][j]);
@@ -1132,11 +1167,9 @@ struct TrainSet *getTrainingData() {
     for (int i = 0; i < test_count * 7; i++) {
         ts->input[i] = train_set[i];
         ts->target[i] = target_set[i];
-    }
-    // free memory
-    for (int i = 0; i < test_count * 7; i++) {
-        matrix_release(train_set[i]);
-        matrix_release(target_set[i]);
+//        // free memory
+//        matrix_release(train_set[i]);
+//        matrix_release(target_set[i]);
     }
     return ts;
 }
