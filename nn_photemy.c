@@ -5,7 +5,7 @@
 #define printf printf
 const double l_rate = 1;
 
-typedef struct Matrix {
+typedef struct {
     int rows;
     int cols;
     double *data;
