@@ -30,6 +30,14 @@ __device__ __host__ Matrix *allocMatrix(int rows, int cols) {
     return m;
 }
 
+__device__ __host__  Matrix *copyMatrix(Matrix *a) {
+    Matrix *m = allocMatrix(a->rows, a->cols);
+    for (int i = 0; i < a->rows * a->cols; i++) {
+        m->data[i] = a->data[i];
+    }
+    return m;
+}
+
 // multiply two matrices together
 __device__ __host__ Matrix *matrixMult(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, b->cols);
@@ -297,25 +305,28 @@ __device__ __host__ Matrix *predict(size_t x_n, double X[], int _layerCount, Mat
 
 // one training iteration
 __device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int _layerCount, Matrix *weights[], Matrix *biases[]) {
+    printf("train\n");
     // predict the output of the network for the input -----------------------------------------------------------------
     // array of matrices resembling the layers of the network and their output
     Matrix *layers[layerCount + 1];
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
-    //    printf("Input: ");
+//    printf("Input: ");
     for (int i = 0; i < x_n; i++) {
         layers[0]->data[i] = X[i];
-        //        printf("%g, ", layers[0]->data[i]);
+//        printf("%g, ", layers[0]->data[i]);
     }
-    //    printf("\n");
+//    printf("\n");
     //    printf("Target: ");
     for (int i = 0; i < y_n; i++) {
-        //        printf("%g, ", Y[i]);
+//                printf("%g, ", Y[i]);
     }
     //    printf("\n");
     // compute the output of each layer
     Matrix *temp2;
     for (int i = 1; i < layerCount; i++) {
+        printf("matrixMult(weights[%d - 1], layers[%d - 1])\n", i, i);
+//        print_matrix_desc(weights[i - 1], "weights: ");
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
         //        print_matrix_desc(matrixTranspose(weights[i - 1]), "weights[i - 1]: ");
         Matrix *temp = add(layers[i], biases[i - 1]);
@@ -345,6 +356,7 @@ __device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, cons
     for (int i = layerCount - 2; i > 0; i--) {
         // compute the error of each layer
         transposed = matrixTranspose(weights[i]);
+//        printf("matrixMult(transposed, error)\n");
         temp = matrixMult(transposed, error);
         matrix_release(transposed);
         matrix_release(error);
@@ -402,7 +414,7 @@ __device__ __host__ void randomize(int arr[], int n) {
 
 // just call the train function for each learn_set each epoch
 __device__ __host__ void fit(Matrix *train_set[], Matrix *target_set[],
-         int epochs, int layerCount, Matrix *weights[], Matrix *biases[]) {
+                             int epochs, int layerCount, Matrix *weights[], Matrix *biases[]) {
     printf("fit\n");
 //    Matrix *output;
     for (int i = 0; i < epochs; i++) {

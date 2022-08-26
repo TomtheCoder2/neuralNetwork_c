@@ -3,14 +3,35 @@
 
 using namespace std;
 
+#define cudaCheckErrors(msg) \
+    do { \
+        cudaError_t __err = cudaGetLastError(); \
+        if (__err != cudaSuccess) { \
+            fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n", \
+                msg, cudaGetErrorString(__err), \
+                __FILE__, __LINE__); \
+            fprintf(stderr, "*** FAILED - ABORTING\n"); \
+            exit(1); \
+        } \
+    } while (0)
+
+
 // Kernel
 __global__ void fitKernel(int contestantCount,
                           int train_count,
                           Matrix *train_set[],
                           Matrix *target_set[],
                           int epochs, int layerCount, Matrix ***weights, Matrix ***biases) {
-    int id = threadIdx.x;
-//    fit(train_set, target_set, epochs, layerCount, weights[id], biases[id]);
+    int id = threadIdx.x + blockDim.x * threadIdx.y;
+    id = threadIdx.x;
+//    printf("start #%d\n", id);
+    // print all there vars threadIdx.x + blockDim.x * threadIdx.y
+//    printf("thread.x: %d\n", threadIdx.x);
+//    printf("thread.y: %d\n", threadIdx.y);
+//    printf("block.x: %d\n", blockDim.x);
+//    printf("block.y: %d\n", blockDim.y);
+    print_matrix_desc(weights[id][0], "weights[id]: ");
+    fit(train_set, target_set, epochs, layerCount, weights[id], biases[id]);
     printf("finished %d\n", id);
 }
 
@@ -42,11 +63,11 @@ int main() {
     // weight and biases for the network
     Matrix ***weights = new Matrix **[N];
     for (int i = 0; i < N; i++) {
-        weights[i] = new Matrix*[layerCount - 1];
+        weights[i] = new Matrix *[layerCount - 1];
     }
     Matrix ***biases = new Matrix **[N];
     for (int i = 0; i < N; i++) {
-        biases[i] = new Matrix*[layerCount - 1];
+        biases[i] = new Matrix *[layerCount - 1];
     }
     // local train_set and target_set
     Matrix *train_set[test_count * 7];
@@ -64,19 +85,59 @@ int main() {
     // init weights and biases
     for (int j = 0; j < N; j++) {
         for (int i = 1; i < layerCount; i++) {
-            printf("init i %d: ", i);
-            printf("%d\n", layerSizes[i]);
+//            printf("init i %d: ", i);
+//            printf("%d\n", layerSizes[i]);
             weights[j][i - 1] = init_matrix_r(layerSizes[i], layerSizes[i - 1], 123456);
             biases[j][i - 1] = init_matrix_r(layerSizes[i], 1, 123456);
+//            print_matrix_desc(weights[j][i - 1], "weights");
+        }
+    }
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < layerCount - 1; j++) {
+//            printf("weights[%d][%d]: cols: %d, rows: %d\n", i, j, weights[i][j]->cols, weights[i][j]->rows);
+//            printf("biases[%d][%d]: cols: %d, rows: %d\n", i, j, biases[i][j]->cols, biases[i][j]->rows);
         }
     }
     printf("weights and biases init done\n");
 
-//    cudaMalloc(&train_set, sizeof(Matrix *) * test_count * 7);
-//    cudaMalloc(&target_set, sizeof(Matrix *) * test_count * 7);
+//    // copy train and target set to GPU
+//    cudaMalloc((void **) &train_set, sizeof(Matrix *) * test_count * 7);
+//    cudaCheckErrors("cudaMalloc fail");
+//    cudaMemcpy(train_set, &train_set, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
+//    cudaCheckErrors("cudaMemcpy fail");
+//
+//    cudaMemcpy(target_set, ts->target, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
+//
+//    cudaMemcpy(train_set, train_set, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
+//    cudaMemcpy(target_set, target_set, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
 
-    cudaMemcpy(train_set, train_set, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
-    cudaMemcpy(target_set, target_set, sizeof(Matrix *) * test_count * 7, cudaMemcpyHostToDevice);
+    for (Matrix *t: train_set) {
+        Matrix temp = *t;
+        print_matrix_desc(&temp, "temp: ");
+
+        // create class storage on device and copy top level class
+        Matrix *matrix_device;
+        cudaMalloc((void **) &matrix_device, sizeof(Matrix));
+        cudaCheckErrors("cudaMalloc Matrix fail");
+        cudaMemcpy(matrix_device, &temp, sizeof(Matrix), cudaMemcpyHostToDevice);
+        cudaCheckErrors("cudaMemcpy Matrix fail");
+
+        // make an allocated region on device for use by pointer in class
+        double *hostData;
+        cudaMalloc((void **) &hostData, sizeof(double));
+        cudaCheckErrors("cudaMalloc Matrix fail");
+        for (int i = 0; i < temp.rows * temp.cols; i++) {
+            printf("%g ", temp.data[i]);
+        }
+        printf("\n");
+        cudaMemcpy(hostData, temp.data, sizeof(double) * test_count * 7, cudaMemcpyHostToDevice);
+        cudaCheckErrors("cudaMemcpy Matrix fail");
+
+        // copy pointer to allocated device storage to device class
+        cudaMemcpy(&(matrix_device->data), &hostData, sizeof(double *), cudaMemcpyHostToDevice);
+        cudaCheckErrors("cudaMemcpy Matrix fail");
+    }
+
     printf("train_set and target_set copied to device\n");
     // copy weights and biases to device
     for (int j = 0; j < N; j++) {
@@ -85,6 +146,10 @@ int main() {
             cudaMalloc(&biases[j][i], sizeof(Matrix) * layerSizes[i + 1] * 1);
             cudaMemcpy(weights[j][i], weights[j][i], sizeof(Matrix) * layerSizes[i + 1] * layerSizes[i], cudaMemcpyHostToDevice);
             cudaMemcpy(biases[j][i], biases[j][i], sizeof(Matrix) * layerSizes[i + 1] * 1, cudaMemcpyHostToDevice);
+//            cudaMalloc(&weights[j][i], sizeof(Matrix));
+//            cudaMalloc(&biases[j][i], sizeof(Matrix));
+//            cudaMemcpy(weights[j][i], weights[j][i], sizeof(Matrix), cudaMemcpyHostToDevice);
+//            cudaMemcpy(biases[j][i], biases[j][i], sizeof(Matrix), cudaMemcpyHostToDevice);
         }
     }
     printf("weights and biases copied to device\n");
@@ -93,7 +158,17 @@ int main() {
     int epochs = 100;
     int contestantCount = N;
     int train_count = test_count * 7;
-    fitKernel<<<contestantCount, 1>>>(contestantCount, train_count, train_set, target_set, epochs, layerCount, weights, biases);
+    fitKernel<<<1, contestantCount>>>(contestantCount, train_count, train_set, target_set, epochs, layerCount, weights, biases);
+    for (int j = 0; j < N; j++) {
+        for (int i = 1; i < layerCount; i++) {
+//            printf("init i %d: ", i);
+//            printf("%d\n", layerSizes[i]);
+//            weights[j][i - 1] = init_matrix_r(layerSizes[i], layerSizes[i - 1], 123456);
+//            biases[j][i - 1] = init_matrix_r(layerSizes[i], 1, 123456);
+//            print_matrix_desc(weights[j][i - 1], "weights");
+        }
+    }
+//    fit(train_set, target_set, epochs, layerCount, weights[0], biases[0]);
 
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
