@@ -18,20 +18,20 @@ using namespace std;
 class CudaClass {
 public:
     double *data;
+    int a;
 
     CudaClass(double x) {
         data = new double[1];
         data[0] = x;
+        a = x * 2;
     }
 };
 
 __global__ void useClass(CudaClass *cudaClass) {
-    printf("%g\n", cudaClass->data[0]);
+    printf("%g, %d\n", cudaClass->data[0], cudaClass->a);
 };
 
-int main() {
-    CudaClass c(1);
-
+CudaClass *copyToGPU(CudaClass c) {
     // create class storage on device and copy top level class
     CudaClass *d_c;
     cudaMalloc((void **) &d_c, sizeof(CudaClass));
@@ -50,6 +50,13 @@ int main() {
     // copy pointer to allocated device storage to device class
     cudaMemcpy(&(d_c->data), &hostdata, sizeof(double *), cudaMemcpyHostToDevice);
     cudaCheckErrors("cudaMemcpy");
+    return d_c;
+}
+
+int main() {
+    CudaClass c(1);
+
+    CudaClass *d_c = copyToGPU(c);
 
     useClass<<<1, 1>>>(d_c);
     cudaDeviceSynchronize();

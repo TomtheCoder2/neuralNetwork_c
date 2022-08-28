@@ -11,9 +11,15 @@
 
 class Matrix {
 public:
+    double *data;
     int rows;
     int cols;
-    double *data;
+
+    Matrix(int rowsI, int colsI) {
+        rows = rowsI;
+        cols = colsI;
+        data = (double *) malloc(rows * cols * sizeof(double));
+    }
 };
 
 const double l_rate = 0.000056;
