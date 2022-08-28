@@ -35,8 +35,8 @@ __global__ void fitKernel(int contestantCount,
 //    printf("thread.y: %d\n", threadIdx.y);
 //    printf("block.x: %d\n", blockDim.x);
 //    printf("block.y: %d\n", blockDim.y);
-//    print_matrix_desc(train_set[0], "trainSet: ");
-    print_matrix_desc(weights[id][0], "weights[id]: ");
+    print_matrix_desc(train_set[0], "trainSet: ");
+//    print_matrix_desc(weights[id][0], "weights[id]: ");
 //    fit(train_set, target_set, epochs, layerCount, weights[id], biases[id]);
     printf("finished %d\n", id);
 }

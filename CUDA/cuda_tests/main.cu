@@ -27,8 +27,12 @@ public:
     }
 };
 
-__global__ void useClass(CudaClass *cudaClass) {
-    printf("%g, %d\n", cudaClass->data[0], cudaClass->a);
+__global__ void useClass(CudaClass *cudaClass[]) {
+    printf("kernel: \n");
+    for (int i = 0; i < 10; i++) {
+        printf("%d\n", i);
+        printf("%g, %d\n", cudaClass[i]->data[0], cudaClass[i]->a);
+    }
 };
 
 CudaClass *copyToGPU(CudaClass c) {
@@ -43,7 +47,6 @@ CudaClass *copyToGPU(CudaClass c) {
     double *hostdata;
     cudaMalloc((void **) &hostdata, sizeof(double));
     cudaCheckErrors("cudaMalloc");
-    printf("%g\n", c.data[0]);
     cudaMemcpy(hostdata, c.data, sizeof(double), cudaMemcpyHostToDevice);
     cudaCheckErrors("cudaMemcpy");
 
@@ -54,11 +57,19 @@ CudaClass *copyToGPU(CudaClass c) {
 }
 
 int main() {
-    CudaClass c(1);
+    CudaClass *classes[10];
 
-    CudaClass *d_c = copyToGPU(c);
+    for (int i = 0; i < 10; i++) {
+        CudaClass c(i);
+        classes[i] = copyToGPU(c);
+    }
 
-    useClass<<<1, 1>>>(d_c);
+    // start kernel
+    useClass<<<1, 1>>>(classes);
     cudaDeviceSynchronize();
+    cudaError_t cudaerr = cudaDeviceSynchronize();
+    if (cudaerr != cudaSuccess)
+        printf("kernel launch failed with error \"%s\".\n",
+               cudaGetErrorString(cudaerr));
     return 0;
 }
