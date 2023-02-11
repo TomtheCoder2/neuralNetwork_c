@@ -14,6 +14,7 @@ using namespace std;
         } \
     } while (0)
 
+const int N = 1023;
 
 class CudaClass {
 public:
@@ -27,12 +28,17 @@ public:
     }
 };
 
-__global__ void useClass(CudaClass *cudaClass[]) {
-    printf("kernel: \n");
-    for (int i = 0; i < 10; i++) {
-        printf("%d\n", i);
-        printf("%g, %d\n", cudaClass[i]->data[0], cudaClass[i]->a);
+__global__ void useClass(CudaClass **cudaClass) {
+    int i = threadIdx.x;
+    printf("kernel: %d\n", i);
+//        printf("%d\n", i);
+//        printf("%g, %d\n", cudaClass[i]->data[0], cudaClass[i]->a);
+    float x = cudaClass[i]->data[0];
+    for (int j = 0; j < 2000000000; j++) {
+        x = x + 2304 + i / 2000;
     }
+    cudaClass[i]->data[0] = x;
+    printf("kernel: %d, result: %g\n", i, cudaClass[i]->data[0]);
 };
 
 CudaClass *copyToGPU(CudaClass c) {
@@ -57,19 +63,46 @@ CudaClass *copyToGPU(CudaClass c) {
 }
 
 int main() {
-    CudaClass *classes[10];
+    CudaClass *h_classes[N];
 
-    for (int i = 0; i < 10; i++) {
-        CudaClass c(i);
-        classes[i] = copyToGPU(c);
+    for (int i = 0; i < N; i++) {
+        CudaClass c(i * rand());
+        h_classes[i] = copyToGPU(c);
     }
 
+    CudaClass **d_classes;
+    cudaMalloc(&d_classes, N * sizeof(CudaClass *));
+    cudaMemcpy(d_classes, h_classes, N * sizeof(CudaClass *), cudaMemcpyHostToDevice);
+
     // start kernel
-    useClass<<<1, 1>>>(classes);
+    useClass<<<1, N>>>(d_classes);
     cudaDeviceSynchronize();
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
         printf("kernel launch failed with error \"%s\".\n",
                cudaGetErrorString(cudaerr));
+
+
+//    float **h_array_list, **d_array_list;
+//    // allocate array lists
+//    h_array_list = (float *) malloc(num_arrays * sizeof(float *));
+//    cudaMalloc((void **) &d_array_list, num_arrays * sizeof(float *));
+//    // allocate arrays on the device
+//    for (int i = 0; i < num_arrays; i++)
+//        cudaMalloc((void **) &h_array_list[i], data_size);
+//    // copy array list to the device
+//    cudaMemcpy(d_array_list, h_array_list, num_arrays * sizeof(float *), cudaMemcpyHostToDevice);
+//    // allocate array list on the host
+//    float **array_list;
+//    array_list = (float **) malloc(num_arrays * sizeof(float *));
+//// allocate arrays on the host
+//    for (int i = 0; i < num_arrays; i++)
+//        array_list[i] = malloc(data_size);
+//// ****fill out data here
+//// populate data arrays on the device
+//    for (int i = 0; i < num_arrays; i++)
+//        cudaMemcpy(h_array_list[i], array_list[i], data_size, cudaMemcpyDeviceToHost);
+
+
     return 0;
 }

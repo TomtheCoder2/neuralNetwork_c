@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <cublasXt.h>
 
 #ifndef NN_NN_CPP
 #define NN_NN_CPP
@@ -11,45 +12,39 @@
 
 class Matrix {
 public:
-    double *data;
+    float *data;
     int rows;
     int cols;
 
     Matrix(int rowsI, int colsI) {
         rows = rowsI;
         cols = colsI;
-        data = (double *) malloc(rows * cols * sizeof(double));
+        data = (float *) malloc(rows * cols * sizeof(float));
     }
 };
 
-const double l_rate = 0.000056;
+const float l_rate = 0.000056;
 const int train_count = 100;
 const int layerCount = 4;
 
 
 // allocate a matrix with given dimensions
-__device__ __host__ Matrix *allocMatrix(int rows, int cols) {
+__device__ __host__
+
+Matrix *allocMatrix(int rows, int cols) {
     Matrix *m = (Matrix *) malloc(sizeof(Matrix));
     m->rows = rows;
     m->cols = cols;
-    m->data = (double *) malloc(rows * cols * sizeof(double));
+    m->data = (float *) malloc(rows * cols * sizeof(float));
     return m;
 }
 
-__device__ __host__  Matrix *copyMatrix(Matrix *a) {
-    Matrix *m = allocMatrix(a->rows, a->cols);
-    for (int i = 0; i < a->rows * a->cols; i++) {
-        m->data[i] = a->data[i];
-    }
-    return m;
-}
-
-// multiply two matrices together
-__device__ __host__ Matrix *matrixMult(Matrix *a, Matrix *b) {
+__device__ __host__
+Matrix *matrixMult(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, b->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < b->cols; j++) {
-            double sum = 0;
+            float sum = 0;
             for (int k = 0; k < a->cols; k++) {
                 sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
             }
@@ -57,10 +52,35 @@ __device__ __host__ Matrix *matrixMult(Matrix *a, Matrix *b) {
         }
     }
     return c;
+//    float alpha = 1.0f;
+//    float beta = 0.0f;
+//    cublasHandle_t cnpHandle;
+//    cublasStatus_t status = cublasCreate(&cnpHandle);
+//    cublasSgemm(cnpHandle,
+//                CUBLAS_OP_N, CUBLAS_OP_T,
+//                b->rows, a->rows, 3,
+//                &alpha, // 1
+//                b->data, b->rows,
+//                a->data, a->rows,
+//                &beta, // 0
+//                c->data, c->rows);
+//    return c;
+}
+
+__device__ __host__
+
+Matrix *copyMatrix(Matrix *a) {
+    Matrix *m = allocMatrix(a->rows, a->cols);
+    for (int i = 0; i < a->rows * a->cols; i++) {
+        m->data[i] = a->data[i];
+    }
+    return m;
 }
 
 // add two matrices together
-__device__ __host__ Matrix *add(Matrix *a, Matrix *b) {
+__device__ __host__
+
+Matrix *add(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     if (a->rows != b->rows || a->cols != b->cols) {
         printf("Matrix sizes do not match\n");
@@ -76,7 +96,9 @@ __device__ __host__ Matrix *add(Matrix *a, Matrix *b) {
 
 
 // subtract two matrices a - b
-__device__ __host__ Matrix *sub(Matrix *a, Matrix *b) {
+__device__ __host__
+
+Matrix *sub(Matrix *a, Matrix *b) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -87,7 +109,9 @@ __device__ __host__ Matrix *sub(Matrix *a, Matrix *b) {
 }
 
 // multiply a scalar to a each matrix element
-__device__ __host__ Matrix *matrixMultScalar(Matrix *a, double scalar) {
+__device__ __host__
+
+Matrix *matrixMultScalar(Matrix *a, float scalar) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -98,7 +122,9 @@ __device__ __host__ Matrix *matrixMultScalar(Matrix *a, double scalar) {
 }
 
 // add a scalar to each matrix element
-__device__ __host__ Matrix *matrixAddScalar(Matrix *a, double scalar) {
+__device__ __host__
+
+Matrix *matrixAddScalar(Matrix *a, float scalar) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -110,7 +136,9 @@ __device__ __host__ Matrix *matrixAddScalar(Matrix *a, double scalar) {
 
 
 // compute the sigmoid function on each element of a matrix
-__device__ __host__ Matrix *matrixSigmoid(Matrix *a) {
+__device__ __host__
+
+Matrix *matrixSigmoid(Matrix *a) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -121,7 +149,9 @@ __device__ __host__ Matrix *matrixSigmoid(Matrix *a) {
 }
 
 // compute the derivative of the sigmoid function on each element of a matrix
-__device__ __host__ Matrix *matrixSigmoidDerivative(Matrix *a) {
+__device__ __host__
+
+Matrix *matrixSigmoidDerivative(Matrix *a) {
     Matrix *c = allocMatrix(a->rows, a->cols);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -132,7 +162,9 @@ __device__ __host__ Matrix *matrixSigmoidDerivative(Matrix *a) {
 }
 
 // transpose a matrix
-__device__ __host__ Matrix *matrixTranspose(Matrix *a) {
+__device__ __host__
+
+Matrix *matrixTranspose(Matrix *a) {
     Matrix *c = allocMatrix(a->cols, a->rows);
     for (int i = 0; i < a->rows; i++) {
         for (int j = 0; j < a->cols; j++) {
@@ -142,9 +174,11 @@ __device__ __host__ Matrix *matrixTranspose(Matrix *a) {
     return c;
 }
 
-// convert an array of doubles into a matrix with given dimensions, row-major
-__device__ __host__ Matrix *init_matrix_array(int n, int m, const double *A) {
-    double *B = (double *) malloc(n * m * sizeof(double));
+// convert an array of floats into a matrix with given dimensions, row-major
+__device__ __host__
+
+Matrix *init_matrix_array(int n, int m, const float *A) {
+    float *B = (float *) malloc(n * m * sizeof(float));
     for (int i = 0; i < n * m; i++) {
         B[i] = A[i];
     }
@@ -155,9 +189,9 @@ __device__ __host__ Matrix *init_matrix_array(int n, int m, const double *A) {
     return mat;
 }
 
-//// convert an array of doubles into a matrix with given dimensions, row-major
-//Matrix *init_matrix_from_array(int n, int m, const double A[n]) {
-//    double *B = (double *) malloc(n * m * sizeof(double));
+//// convert an array of floats into a matrix with given dimensions, row-major
+//Matrix *init_matrix_from_array(int n, int m, const float A[n]) {
+//    float *B = (float *) malloc(n * m * sizeof(float));
 //    for (int i = 0; i < n * m; i++) {
 //        B[i] = A[i];
 //    }
@@ -169,20 +203,25 @@ __device__ __host__ Matrix *init_matrix_array(int n, int m, const double *A) {
 //}
 
 // print a matrix
-__device__ __host__ void print_matrix(Matrix *mat);
+__device__ __host__
+
+void print_matrix(Matrix *mat);
 
 // init a matrix with random values
-__host__ Matrix *init_matrix_r(int n, int m, int seed) {
-    double *A = (double *) malloc(n * m * sizeof(double));
-    //    double A[n * m];
+__host__ Matrix
+*
+
+init_matrix_r(int n, int m, int seed) {
+    float *A = (float *) malloc(n * m * sizeof(float));
+    //    float A[n * m];
     srand(seed);
 
     for (int i = 0; i < n * m; i++) {
-        A[i] = (((rand() / (double) RAND_MAX) * 2.0) - 1.0);
+        A[i] = (((rand() / (float) RAND_MAX) * 2.0) - 1.0);
         rand();
-        //        printf("%f ", rand() / (double) RAND_MAX * 2.0 - 1.0);
+        //        printf("%f ", rand() / (float) RAND_MAX * 2.0 - 1.0);
     }
-    Matrix *mat = static_cast<Matrix *>(malloc(sizeof(Matrix)));
+    Matrix * mat = static_cast<Matrix *>(malloc(sizeof(Matrix)));
     mat->cols = m;
     mat->rows = n;
     mat->data = A;
@@ -190,12 +229,14 @@ __host__ Matrix *init_matrix_r(int n, int m, int seed) {
 }
 
 // init a matrix with value 0
-__device__ __host__ Matrix *init_matrix(int n, int m) {
-    double *A = (double *) malloc(n * m * sizeof(double));
+__device__ __host__
+
+Matrix *init_matrix(int n, int m) {
+    float *A = (float *) malloc(n * m * sizeof(float));
     for (int i = 0; i < n * m; i++) {
         A[i] = 0;
     }
-    Matrix *mat = static_cast<Matrix *>(malloc(sizeof(Matrix)));
+    Matrix * mat = static_cast<Matrix *>(malloc(sizeof(Matrix)));
     mat->cols = m;
     mat->rows = n;
     mat->data = A;
@@ -203,7 +244,9 @@ __device__ __host__ Matrix *init_matrix(int n, int m) {
 }
 
 // free a matrix
-__device__ __host__ void matrix_release(Matrix *mat) {
+__device__ __host__
+
+void matrix_release(Matrix * mat) {
     if (mat == NULL) {
         return;
     }
@@ -214,7 +257,9 @@ __device__ __host__ void matrix_release(Matrix *mat) {
 }
 
 // print matrix
-__device__ __host__ void print_matrix(Matrix *mat) {
+__device__ __host__
+
+void print_matrix(Matrix * mat) {
     printf("Matrix: (%d x %d)\n", mat->rows, mat->cols);
     if (mat == NULL || mat->data == NULL) {
         printf("NULL\n");
@@ -234,18 +279,22 @@ __device__ __host__ void print_matrix(Matrix *mat) {
 }
 
 // print a matrix with a description before it
-__device__ __host__ void print_matrix_desc(Matrix *mat, char desc[]) {
-    printf("%s", desc);
-    print_matrix(mat);
+__device__ __host__
+void print_matrix_desc(Matrix * mat, char
+desc[]) {
+printf("%s", desc);
+print_matrix(mat);
 }
 
 // correct the error of one layer of a neural network
-__device__ __host__ void
+__device__ __host__
+
+void
 correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
              Matrix *weights[],
              Matrix *biases[]) {
     // compute the gradient for gradient descend
-    Matrix *gradient = matrixSigmoidDerivative(layers[i]);
+    Matrix * gradient = matrixSigmoidDerivative(layers[i]);
     // add the current error of this layer to the gradient
     for (int j = 0; j < layers[i]->rows; j++) {
         for (int k = 0; k < layers[i]->cols; k++) {
@@ -256,18 +305,18 @@ correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
     //    matrix_release(gradient);
     //    gradient = g_temp;
     // add the learning rate for controlled learning
-    Matrix *temp = matrixMultScalar(gradient, l_rate);
+    Matrix * temp = matrixMultScalar(gradient, l_rate);
     matrix_release(gradient);
     gradient = temp;
-    Matrix *layerTransposed = matrixTranspose(layers[i - 1]);
+    Matrix * layerTransposed = matrixTranspose(layers[i - 1]);
     // compute the delta weight
-    Matrix *delta = matrixMult(gradient, layerTransposed);
+    Matrix * delta = matrixMult(gradient, layerTransposed);
     //    print_matrix_desc(delta, "delta: ");
     // apply correction
-    Matrix *temp2 = add(weights[i - 1], delta);
+    Matrix * temp2 = add(weights[i - 1], delta);
     matrix_release(weights[i - 1]);
     weights[i - 1] = temp2;
-    Matrix *temp3 = add(biases[i - 1], gradient);
+    Matrix * temp3 = add(biases[i - 1], gradient);
     matrix_release(biases[i - 1]);
     biases[i - 1] = temp3;
     // free memory
@@ -278,9 +327,11 @@ correctError(const int i, Matrix *layers[], Matrix *error, int layerCount,
 }
 
 // predict the output of a neural network for a specific input
-__device__ __host__ Matrix *predict(size_t x_n, double X[], int _layerCount, Matrix *weights[], Matrix *biases[]) {
+__device__ __host__
+
+Matrix *predict(size_t x_n, float X[], int _layerCount, Matrix *weights[], Matrix *biases[]) {
     // array of matrices resembling the layers of the network and their output
-    Matrix *layers[layerCount + 1];
+    Matrix * layers[layerCount + 1];
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
     for (int i = 0; i < x_n; i++) {
@@ -289,10 +340,10 @@ __device__ __host__ Matrix *predict(size_t x_n, double X[], int _layerCount, Mat
     }
     //    printf("\n");
     // compute the output of each layer
-    Matrix *temp2;
+    Matrix * temp2;
     for (int i = 1; i < layerCount; i++) {
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
-        Matrix *temp = add(layers[i], biases[i - 1]);
+        Matrix * temp = add(layers[i], biases[i - 1]);
         matrix_release(layers[i]);
         layers[i] = temp;
         temp2 = matrixSigmoid(layers[i]);
@@ -310,11 +361,13 @@ __device__ __host__ Matrix *predict(size_t x_n, double X[], int _layerCount, Mat
 }
 
 // one training iteration
-__device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, const double Y[], int _layerCount, Matrix *weights[], Matrix *biases[]) {
-    printf("train\n");
+__device__ __host__
+
+Matrix *train(size_t x_n, const float X[], size_t y_n, const float Y[], int _layerCount, Matrix *weights[], Matrix *biases[]) {
+//    printf("train\n");
     // predict the output of the network for the input -----------------------------------------------------------------
     // array of matrices resembling the layers of the network and their output
-    Matrix *layers[layerCount + 1];
+    Matrix * layers[layerCount + 1];
     // init the input layer
     layers[0] = init_matrix(x_n, 1);
 //    printf("Input: ");
@@ -329,13 +382,13 @@ __device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, cons
     }
     //    printf("\n");
     // compute the output of each layer
-    Matrix *temp2;
+    Matrix * temp2;
     for (int i = 1; i < layerCount; i++) {
-        printf("matrixMult(weights[%d - 1], layers[%d - 1])\n", i, i);
+//        printf("matrixMult(weights[%d - 1], layers[%d - 1])\n", i, i);
 //        print_matrix_desc(weights[i - 1], "weights: ");
         layers[i] = matrixMult(weights[i - 1], layers[i - 1]);
         //        print_matrix_desc(matrixTranspose(weights[i - 1]), "weights[i - 1]: ");
-        Matrix *temp = add(layers[i], biases[i - 1]);
+        Matrix * temp = add(layers[i], biases[i - 1]);
         matrix_release(layers[i]);
         layers[i] = temp;
         temp2 = matrixSigmoid(layers[i]);
@@ -347,18 +400,18 @@ __device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, cons
     //    print_matrix_desc(layers[layerCount - 1], "Output: ");
     // compute the error of the output layer and how to correct for it---------------------------------------------------------------
     // compare output the expected output (target) => error
-    Matrix *target = init_matrix(y_n, 1);
+    Matrix * target = init_matrix(y_n, 1);
     for (int i = 0; i < y_n; i++) {
         target->data[i] = Y[i];
         //        printf("%g ", target->data[i]);
     }
     //    printf("\n");
-    Matrix *error = sub(target, layers[layerCount - 1]);
-    Matrix *transposed;
+    Matrix * error = sub(target, layers[layerCount - 1]);
+    Matrix * transposed;
     //    print_matrix_desc(error, "Error: ");
     // correct the error of each layer
     correctError(layerCount - 1, layers, error, layerCount, weights, biases);
-    Matrix *temp;
+    Matrix * temp;
     for (int i = layerCount - 2; i > 0; i--) {
         // compute the error of each layer
         transposed = matrixTranspose(weights[i]);
@@ -393,14 +446,18 @@ __device__ __host__ Matrix *train(size_t x_n, const double X[], size_t y_n, cons
 }
 
 
-__device__ __host__ void swap(int *a, int *b) {
+__device__ __host__
+
+void swap(int *a, int *b) {
     int temp = *a;
     *a = *b;
     *b = temp;
 }
 
 // A function to generate a random permutation of arr[]
-__device__ __host__ void randomize(int arr[], int n) {
+__device__ __host__
+
+void randomize(int arr[], int n) {
     // Use a different seed value so that we don't get same
     // result each time we run this program
     //    srand(time(NULL));
@@ -419,33 +476,55 @@ __device__ __host__ void randomize(int arr[], int n) {
 #undef printf
 
 // just call the train function for each learn_set each epoch
-__device__ __host__ void fit(Matrix *train_set[], Matrix *target_set[],
-                             int epochs, int layerCount, Matrix *weights[], Matrix *biases[]) {
-    printf("fit\n");
+__device__ void fit(Matrix * train_set[], Matrix * target_set[],
+                    int
+epochs,
+int layerCount, Matrix
+*weights[],
+Matrix *biases[]
+) {
+printf("fit\n");
 //    Matrix *output;
-    for (int i = 0; i < epochs; i++) {
-        //        shuffle(train_count, train_set);
-        //        randomize(train_set, train_count);
-        int arr[train_count];
-        for (int j = 0; j < train_count; j++) {
-            arr[j] = j;
-        }
-        randomize(arr, train_count);
-        Matrix *train_set_temp[train_count];
-        Matrix *target_set_temp[train_count];
-        for (int j = 0; j < train_count; j++) {
-            train_set_temp[j] = train_set[arr[j]];
-            target_set_temp[j] = target_set[arr[j]];
-        }
-        if (i % 100 == 0) {
-            printf("epoch %d\n", i);
-        }
-        //        printf("epoch %d\n", i);
-        for (int j = 0; j < train_count; j++) {
-            train(train_set_temp[j]->rows, train_set_temp[j]->data, target_set_temp[j]->rows, target_set_temp[j]->data, layerCount, weights, biases);
-            //            matrix_release(output);
-        }
-    }
+for (
+int i = 0;
+i<epochs;
+i++) {
+//        shuffle(train_count, train_set);
+//        randomize(train_set, train_count);
+int arr[train_count];
+for (
+int j = 0;
+j<train_count;
+j++) {
+arr[j] =
+j;
+}
+randomize(arr, train_count
+);
+Matrix *train_set_temp[train_count];
+Matrix *target_set_temp[train_count];
+for (
+int j = 0;
+j<train_count;
+j++) {
+train_set_temp[j] = train_set[arr[j]];
+target_set_temp[j] = target_set[arr[j]];
+}
+if (i % 10 == 0) {
+printf("%d: epoch %d\n",threadIdx.x + blockDim.
+x *threadIdx
+.y, i);
+}
+//        printf("epoch %d\n", i);
+for (
+int j = 0;
+j<train_count;
+j++) {
+train(train_set_temp[j]
+->rows, train_set_temp[j]->data, target_set_temp[j]->rows, target_set_temp[j]->data, layerCount, weights, biases);
+//            matrix_release(output);
+}
+}
 }
 
 //// Matrix *weights[contestantCount][layerCount (index i)];
@@ -453,12 +532,12 @@ __device__ __host__ void fit(Matrix *train_set[], Matrix *target_set[],
 //// training data is the same for all contestants
 //// int layerSizes[contestantCount][layerCount];
 //// int layerCounts[contestantCount];
-//__kernel __device__ __host__ void fit(__global const double *input, __global const double *target, const int test_count,
-//                  __global double *weights, __global double *biases,
-//                  __global const int *layerSizes, __global const int *layerCounts, const int contestantCount, const int *epochs, __global const double *learning_rates) {
-//__device__ __host__ void fitK(const double *input, const double *target, const int test_count,
-//          double *weights, double *biases,
-//          const int *layerSizes, const int *layerCounts, const int contestantCount, const int *epochs, const double *learning_rates) {
+//__kernel __device__ __host__ void fit(__global const float *input, __global const float *target, const int test_count,
+//                  __global float *weights, __global float *biases,
+//                  __global const int *layerSizes, __global const int *layerCounts, const int contestantCount, const int *epochs, __global const float *learning_rates) {
+//__device__ __host__ void fitK(const float *input, const float *target, const int test_count,
+//          float *weights, float *biases,
+//          const int *layerSizes, const int *layerCounts, const int contestantCount, const int *epochs, const float *learning_rates) {
 //    int id = get_global_id(0);
 //    // get the training data for this contestant
 //    Matrix *train_set[test_count];

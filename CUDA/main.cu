@@ -35,9 +35,9 @@ __global__ void fitKernel(int contestantCount,
 //    printf("thread.y: %d\n", threadIdx.y);
 //    printf("block.x: %d\n", blockDim.x);
 //    printf("block.y: %d\n", blockDim.y);
-    print_matrix_desc(train_set[0], "trainSet: ");
+//    print_matrix_desc(train_set[0], "trainSet: ");
 //    print_matrix_desc(weights[id][0], "weights[id]: ");
-//    fit(train_set, target_set, epochs, layerCount, weights[id], biases[id]);
+    fit(train_set, target_set, epochs, layerCount, weights[id], biases[id]);
     printf("finished %d\n", id);
 }
 
@@ -48,13 +48,13 @@ typedef struct {
     Matrix *target[test_count * 7];
 } TrainSet;
 
-double max_train_set = 0;
+float max_train_set = 0;
 
 TrainSet *getTrainingData();
 
 
 Matrix *copyToGPU(Matrix c) {
-//    print_matrix_desc(&c, "c: ");
+    //    print_matrix_desc(&c, "c: ");
     // create class storage on device and copy top level class
     Matrix *d_c;
     cudaMalloc((void **) &d_c, sizeof(Matrix));
@@ -63,8 +63,8 @@ Matrix *copyToGPU(Matrix c) {
     cudaCheckErrors("cudaMemcpy");
 
     // make an allocated region on device for use by pointer in class
-    double *data_device;
-    int bytes = sizeof(double) * c.rows * c.cols;
+    float *data_device;
+    int bytes = sizeof(float) * c.rows * c.cols;
     cudaMalloc((void **) &data_device, bytes);
     cudaCheckErrors("cudaMalloc");
 //    printf("%g\n", c.data[0]);
@@ -72,19 +72,47 @@ Matrix *copyToGPU(Matrix c) {
     cudaCheckErrors("cudaMemcpy");
 
     // copy pointer to allocated device storage to device class
-    cudaMemcpy(&(d_c->data), &data_device, sizeof(double *), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_c->data), &data_device, sizeof(float *), cudaMemcpyHostToDevice);
     cudaCheckErrors("cudaMemcpy");
 //    printf("finished copy\n");
     return d_c;
 }
 
+bool SetGPU() {
+    int devicesCount;
+    cudaGetDeviceCount(&devicesCount);
+    string desiredDeviceName = "NVIDIA GeForce GTX 1650 Ti";
+    for (int deviceIndex = 0; deviceIndex < devicesCount; ++deviceIndex) {
+        cudaDeviceProp deviceProperties;
+        cudaGetDeviceProperties(&deviceProperties, deviceIndex);
+        if (deviceProperties.name == desiredDeviceName) {
+            cudaSetDevice(deviceIndex);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int main() {
+    int devicesCount;
+    cudaGetDeviceCount(&devicesCount);
+    for (int deviceIndex = 0; deviceIndex < devicesCount; ++deviceIndex) {
+        cudaDeviceProp deviceProperties;
+        cudaGetDeviceProperties(&deviceProperties, deviceIndex);
+        cout << deviceProperties.name << endl;
+    }
+    if (!SetGPU()) {
+        cout << "No GPU found" << endl;
+        return 0;
+    }
     const int N = 100;
     // check for mem leak: cmake .; make; valgrind --tool=memcheck --leak-check=full ./main
     // how many layers of the network
     int layerCount = 4;
     // amount of nodes of each layer
     int layerSizes[] = {4, 74, 89, 7};
+// =================================================== Weight and bias matrices ===================================================
     // weight and biases for the network
     auto ***weights_device = new Matrix **[N];
     for (int i = 0; i < N; i++) {
@@ -94,45 +122,70 @@ int main() {
     for (int i = 0; i < N; i++) {
         biases_device[i] = new Matrix *[layerCount - 1];
     }
-    // local train_set and target_set
-    Matrix *train_set_device[test_count * 7];
-    Matrix *target_set_device[test_count * 7];
-    // init train_set and target_set
-
     printf("training data init done\n");
     // init weights and biases
     for (int j = 0; j < N; j++) {
-        // make an allocated region on device for use by pointer in class
-        Matrix ***data_device;
-        Matrix **data = new Matrix *[layerCount];
-        long bytes = sizeof(Matrix) * layerCount;
-        cudaMalloc((void **) &data_device, bytes);
-        cudaCheckErrors("cudaMalloc");
+        Matrix *data_weights[layerCount];
         for (int i = 1; i < layerCount; i++) {
-            data[i - 1] = copyToGPU(*init_matrix_r(layerSizes[i], layerSizes[i - 1], 12345678));
-            biases_device[j][i - 1] = copyToGPU(*init_matrix_r(layerSizes[i], 1, 12345678));
+            data_weights[i - 1] = copyToGPU(*init_matrix_r(layerSizes[i], layerSizes[i - 1], 12345678));
         }
-        cudaMemcpy(data_device, data, bytes, cudaMemcpyHostToDevice);
+        cudaMalloc(&weights_device[j], layerCount * sizeof(Matrix *));
+        cudaCheckErrors("cudaMalloc");
+        cudaMemcpy(weights_device[j], data_weights, layerCount * sizeof(Matrix *), cudaMemcpyHostToDevice);
         cudaCheckErrors("cudaMemcpy");
-        // copy pointer to allocated device storage to device class
-//        cudaMemcpy(&(weights_device[j]), &data_device, sizeof(Matrix *), cudaMemcpyHostToDevice);
-//        cudaCheckErrors("cudaMemcpy");
+
+
+        Matrix *data_biases[layerCount];
+        for (int i = 1; i < layerCount; i++) {
+            data_biases[i - 1] = copyToGPU(*init_matrix_r(layerSizes[i], 1, 12345678));
+        }
+        cudaMalloc(&biases_device[j], layerCount * sizeof(Matrix *));
+        cudaCheckErrors("cudaMalloc");
+        cudaMemcpy(biases_device[j], data_biases, layerCount * sizeof(Matrix *), cudaMemcpyHostToDevice);
+        cudaCheckErrors("cudaMemcpy");
     }
     printf("weights and biases init done\n");
+    Matrix ***d_weights;
+    cudaMalloc(&d_weights, N * sizeof(Matrix **));
+    cudaCheckErrors("cudaMalloc");
+    cudaMemcpy(d_weights, weights_device, N * sizeof(Matrix **), cudaMemcpyHostToDevice);
+    cudaCheckErrors("cudaMemcpy");
+
+    Matrix ***d_biases;
+    cudaMalloc(&d_biases, N * sizeof(Matrix **));
+    cudaCheckErrors("cudaMalloc");
+    cudaMemcpy(d_biases, biases_device, N * sizeof(Matrix **), cudaMemcpyHostToDevice);
+    cudaCheckErrors("cudaMemcpy");
     printf("weights and biases copied to device\n");
 
+// ===================================================== Train and target set =====================================================
+    // local train_set and target_set
+    Matrix *train_set_device[test_count * 7];
+    Matrix *target_set_device[test_count * 7];
     TrainSet *ts = getTrainingData();
     // copy train_set to GPU
     for (int i = 0; i < train_count * 7; i++) {
         train_set_device[i] = copyToGPU(*ts->input[i]);
         target_set_device[i] = copyToGPU(*ts->target[i]);
     }
+    Matrix **d_train_set;
+    cudaMalloc(&d_train_set, train_count * 7 * sizeof(Matrix *));
+    cudaCheckErrors("cudaMalloc");
+    cudaMemcpy(d_train_set, train_set_device, train_count * 7 * sizeof(Matrix *), cudaMemcpyHostToDevice);
+    cudaCheckErrors("cudaMemcpy");
+
+    Matrix **d_target_set;
+    cudaMalloc(&d_target_set, train_count * 7 * sizeof(Matrix *));
+    cudaCheckErrors("cudaMalloc");
+    cudaMemcpy(d_target_set, target_set_device, train_count * 7 * sizeof(Matrix *), cudaMemcpyHostToDevice);
+    cudaCheckErrors("cudaMemcpy");
+
     printf("train_set and target_set copied to device\n");
 
     // start kernel
     int epochs = 100;
     int contestantCount = N;
-    fitKernel<<<1, contestantCount>>>(contestantCount, test_count * 7, train_set_device, target_set_device, epochs, layerCount, weights_device, biases_device);
+    fitKernel<<<1, 30>>>(contestantCount, test_count * 7, d_train_set, d_target_set, epochs, layerCount, d_weights, d_biases);
 //    cudaDeviceSynchronize();
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
@@ -157,7 +210,7 @@ int main() {
 
 // data
 TrainSet *getTrainingData() {
-    double training_set[][4] = {{17,  35,   27,  81},
+    float training_set[][4] = {{17,  35,   27,  81},
                                 {16,  34,   27,  80},
                                 {17,  34,   27,  81},
                                 {17,  36,   28,  83},
@@ -900,7 +953,7 @@ TrainSet *getTrainingData() {
     // create target set
     for (int i = 0; i < 7; i++) {
         // we want the network to set the value of the result to 1, so we can get the max value (index) of the output and thats the result
-        double target[] = {0, 0, 0, 0, 0, 0, 0};
+        float target[] = {0, 0, 0, 0, 0, 0, 0};
         target[i] = 1;
         for (int j = 0; j < test_count; j++) {
             target_set[i * test_count + j] = init_matrix_array(7, 1, target);

@@ -435,75 +435,75 @@ void fit(size_t train_count, Matrix *train_set[train_count], Matrix *target_set[
 void fitK(const double *input, const double *target, const int test_count,
           double *weights, double *biases,
           const int *layerSizes, const int *layerCounts, const int contestantCount, const int *epochs, const double *learning_rates) {
-    int id = get_global_id(0);
+//    int id = get_global_id(0);
     // get the training data for this contestant
-    Matrix *train_set[test_count];
-    Matrix *target_set[test_count];
-    for (int i = 0; i < test_count; i++) {
-        train_set[i] = init_matrix(4, 1);
-        for (int j = 0; j < 4; j++) {
-            train_set[i]->data[j] = input[i * 4 + j];
-        }
-        target_set[i] = init_matrix(7, 1);
-        for (int j = 0; j < 7; j++) {
-            target_set[i]->data[j] = target[i * 7 + j];
-        }
-    }
-    // get the layer sizes for this contestant
-    int layerCount = layerCounts[contestantCount];
-    int layerSizes_curr[layerCount];
-    // calculate where current layerSizes are in the main array
-    int layer_index = 0;
-    // go through each neural network layer
-    for (int i = 0; i < id; i++) {
-        // go through each layer size
-        for (int j = 0; j < layerCounts[i]; j++) {
-            layer_index ++;
-        }
-    }
-    for (int i = 0; i < layerCount; i++) {
-        layerSizes_curr[i] = layerSizes[layer_index + i];
-    }
-    // get the weights and biases_curr for this contestant
-    Matrix *weights_curr[layerCount];
-    Matrix *biases_curr[layerCount];
-    for (int i = 0; i < layerCount; i++) {
-        // layer
-        weights_curr[i] = init_matrix(layerSizes[i], layerSizes[i - 1] + 1);
-        for (int j = 0; j < weights_curr[i]->rows * weights_curr[i]->cols; j++) {
-            // calc index where weight is located in the array
-            // go through each post neural network
-            int index = 0;
-            layer_index = 0;
-            for (int k = 0; k < id; k++) {
-                // go through each layer
-                for (int l = 0; l < layerCounts[k]; l++) {
-                    index += layerSizes[layer_index] * layerSizes[layer_index + 1];
-                    layer_index ++;
-                }
-            }
-            weights_curr[i]->data[j] = weights[index + i * weights_curr[i]->rows * weights_curr[i]->cols + j];
-        }
-        biases_curr[i] = init_matrix(layerSizes[i], 1);
-        for (int j = 0; j < biases_curr[i]->rows * biases_curr[i]->cols; j++) {
-            // calc layer_index where bias is located in the array
-            // go through each post neural network
-            int index = 0;
-            layer_index = 0;
-            for (int k = 0; k < id; k++) {
-                // go through each layer
-                for (int l = 0; l < layerCounts[k]; l++) {
-                    index += layerSizes[layer_index] * layerSizes[layer_index + 1];
-                    layer_index ++;
-                }
-            }
-            biases_curr[i]->data[j] = biases[index + i * biases_curr[i]->rows * biases_curr[i]->cols + j];
-        }
-    }
-    // get the learning rate for this contestant
-    l_rate = learning_rates[contestantCount];
-    // fit the model for this contestant
-    fit(test_count, train_set, target_set, *epochs, layerCount, weights_curr, biases_curr);
+//    Matrix *train_set[test_count];
+//    Matrix *target_set[test_count];
+//    for (int i = 0; i < test_count; i++) {
+//        train_set[i] = init_matrix(4, 1);
+//        for (int j = 0; j < 4; j++) {
+//            train_set[i]->data[j] = input[i * 4 + j];
+//        }
+//        target_set[i] = init_matrix(7, 1);
+//        for (int j = 0; j < 7; j++) {
+//            target_set[i]->data[j] = target[i * 7 + j];
+//        }
+//    }
+//    // get the layer sizes for this contestant
+//    int layerCount = layerCounts[contestantCount];
+//    int layerSizes_curr[layerCount];
+//    // calculate where current layerSizes are in the main array
+//    int layer_index = 0;
+//    // go through each neural network layer
+//    for (int i = 0; i < id; i++) {
+//        // go through each layer size
+//        for (int j = 0; j < layerCounts[i]; j++) {
+//            layer_index ++;
+//        }
+//    }
+//    for (int i = 0; i < layerCount; i++) {
+//        layerSizes_curr[i] = layerSizes[layer_index + i];
+//    }
+//    // get the weights and biases_curr for this contestant
+//    Matrix *weights_curr[layerCount];
+//    Matrix *biases_curr[layerCount];
+//    for (int i = 0; i < layerCount; i++) {
+//        // layer
+//        weights_curr[i] = init_matrix(layerSizes[i], layerSizes[i - 1] + 1);
+//        for (int j = 0; j < weights_curr[i]->rows * weights_curr[i]->cols; j++) {
+//            // calc index where weight is located in the array
+//            // go through each post neural network
+//            int index = 0;
+//            layer_index = 0;
+//            for (int k = 0; k < id; k++) {
+//                // go through each layer
+//                for (int l = 0; l < layerCounts[k]; l++) {
+//                    index += layerSizes[layer_index] * layerSizes[layer_index + 1];
+//                    layer_index ++;
+//                }
+//            }
+//            weights_curr[i]->data[j] = weights[index + i * weights_curr[i]->rows * weights_curr[i]->cols + j];
+//        }
+//        biases_curr[i] = init_matrix(layerSizes[i], 1);
+//        for (int j = 0; j < biases_curr[i]->rows * biases_curr[i]->cols; j++) {
+//            // calc layer_index where bias is located in the array
+//            // go through each post neural network
+//            int index = 0;
+//            layer_index = 0;
+//            for (int k = 0; k < id; k++) {
+//                // go through each layer
+//                for (int l = 0; l < layerCounts[k]; l++) {
+//                    index += layerSizes[layer_index] * layerSizes[layer_index + 1];
+//                    layer_index ++;
+//                }
+//            }
+//            biases_curr[i]->data[j] = biases[index + i * biases_curr[i]->rows * biases_curr[i]->cols + j];
+//        }
+//    }
+//    // get the learning rate for this contestant
+//    l_rate = learning_rates[contestantCount];
+//    // fit the model for this contestant
+//    fit(test_count, train_set, target_set, *epochs, layerCount, weights_curr, biases_curr);
 }
 
 enum {
@@ -730,7 +730,7 @@ int main() {
     // train
     struct timeval stop, start;
     gettimeofday(&start, NULL);
-    fit(test_count * 7, train_set, target_set, 10, layerCount, weights, biases);
+    fit(test_count * 7, train_set, target_set, 1000, layerCount, weights, biases);
     gettimeofday(&stop, NULL);
     printf("training took %ld us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
     // print in ms
